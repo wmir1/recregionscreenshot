@@ -36,7 +36,6 @@ class CheckableComboBox(QComboBox):
                     item.setCheckState(Qt.Checked)
                 elif not state:
                     item.setCheckState(Qt.UnChecked)
-                # list_checked.append(self.itemText(i))
 
     def list_item_checked(self):
         list_checked = []
