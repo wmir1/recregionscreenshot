@@ -4,7 +4,7 @@ import sys
 from PySide2.QtWidgets import \
     QApplication, QLabel, QWidget, QGraphicsDropShadowEffect,\
     QPushButton, QMainWindow, QCheckBox, QVBoxLayout,\
-    QHBoxLayout, QSizePolicy, QSpinBox, QDialog, QFileDialog, QMessageBox, QTabWidget, QComboBox, QTextEdit, QSplitter
+    QHBoxLayout, QSizePolicy, QSpinBox, QDialog, QFileDialog, QMessageBox, QTabWidget, QComboBox, QTextEdit, QSplitter, QStatusBar
 
 from datetime import datetime
 import os
@@ -17,8 +17,6 @@ logging.basicConfig(level=logging.WARNING,
 
 
 class CheckableComboBox(QComboBox):
-    # once there is a checkState set, it is rendered
-    # here we assume default Unchecked
     def addItem(self, item):
         super(CheckableComboBox, self).addItem(item)
         item = self.model().item(self.count()-1, 0)
@@ -28,6 +26,16 @@ class CheckableComboBox(QComboBox):
     def item_checked(self, index):
         item = self.model().item(index, 0)
         return item.checkState() == Qt.Checked
+
+    def set_item_check(self, item_text,state):
+        for i in range(self.count()):
+            item = self.model().item(i, 0)
+            if self.itemText(i) == item_text:
+                if state:
+                    item.setCheckState(Qt.Checked)
+                elif not state:
+                    item.setCheckState(Qt.UnChecked)
+                # list_checked.append(self.itemText(i))
 
     def list_item_checked(self):
         list_checked = []
@@ -49,7 +57,6 @@ class Screenshot(QWidget):
         splitter = QSplitter(Qt.Horizontal)
         splitter.splitterMoved.connect(self.resizeEvent)
         # hor_layout = QHBoxLayout()
-
         self.original_pixmap = QPixmap()
 
         self.screenshot_label = QLabel(self)
@@ -91,6 +98,8 @@ class Screenshot(QWidget):
         self.lang_combo_box.addItem("eng")
         self.lang_combo_box.addItem("ukr")
         self.lang_combo_box.addItem("rus")
+        self.lang_combo_box.set_item_check("eng",True)
+        
 
         self.recognition_button = QPushButton('Recognize', self)
         self.recognition_button.setEnabled(False)
@@ -111,7 +120,6 @@ class Screenshot(QWidget):
         recognition_buttons_layout.addWidget(self.lang_combo_box)
         recognition_buttons_layout.addWidget(self.negative_check_box)
         recognition_buttons_layout.addWidget(self.grayscale_check_box)
-        
 
         main_layout = QVBoxLayout(self)
 
@@ -152,7 +160,8 @@ class Screenshot(QWidget):
             return
         file_name = file_dialog.selectedFiles()[0]
         if not self.original_pixmap.save(file_name):
-
+            logging.error("The image could not be saved to \"{}\".".format(
+                QDir.toNativeSeparators(file_name)))
             QMessageBox.warning(self, "Save Error", "The image could not be saved to \"{}\".".format(
                 QDir.toNativeSeparators(file_name)))
 
@@ -190,23 +199,28 @@ class Screenshot(QWidget):
         logging.debug("running recognition")
         if not os.path.exists(folder_path):
             os.mkdir(folder_path)
-            logging.debug("Directory " + folder_path+" created")
+            logging.debug("Directory " + folder_path + " created")
         else:
-            logging.debug("Directory " + folder_path+" already yet")
+            logging.debug("Directory " + folder_path + " already yet")
         if self.original_pixmap.save(folder_path + '/img001.png'):
             logging.debug("Picture img001 created")
 
-            # print(self.lang_combo_box.list_item_checked())
+            logging.debug("List_item_checked: " +
+                          str(self.lang_combo_box.list_item_checked()))
 
             res = self.recognition(
                 folder_path + '/img001.png', self.lang_combo_box.list_item_checked())
             # calling reco
             # print(res)
 
-            # dt_Layout = QVBoxLayout(self.dialog_text)
-            # self.text_edit = QTextEdit()
             self.text_edit.setText(res)
             self.save_text_button.setEnabled(True)
+            if not res:
+                QMessageBox.information(
+                    self, "Recognition failed", "Can't recognize text")
+            else:
+                QMessageBox.information(
+                    self, "Recognition  complete", "Recognition complete")
 
         try:
             rmtree(folder_path)
