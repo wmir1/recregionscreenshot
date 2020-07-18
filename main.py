@@ -14,6 +14,7 @@ from shutil import rmtree
 
 logging.basicConfig(level=logging.WARNING,
                     format='[%(levelname)s] - %(asctime)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
 class CheckableComboBox(QComboBox):
@@ -27,7 +28,7 @@ class CheckableComboBox(QComboBox):
         item = self.model().item(index, 0)
         return item.checkState() == Qt.Checked
 
-    def set_item_check(self, item_text,state):
+    def set_item_check(self, item_text, state):
         for i in range(self.count()):
             item = self.model().item(i, 0)
             if self.itemText(i) == item_text:
@@ -92,14 +93,11 @@ class Screenshot(QWidget):
         screenshot_buttons_layout.addWidget(self.save_text_button)
         screenshot_buttons_layout.addWidget(self.quit_screenshot_button)
 
-        # screenshot_buttons_layout.addStretch()
-
         self.lang_combo_box = CheckableComboBox()
         self.lang_combo_box.addItem("eng")
         self.lang_combo_box.addItem("ukr")
         self.lang_combo_box.addItem("rus")
-        self.lang_combo_box.set_item_check("eng",True)
-        
+        self.lang_combo_box.set_item_check("eng", True)
 
         self.recognition_button = QPushButton('Recognize', self)
         self.recognition_button.setEnabled(False)
@@ -160,7 +158,7 @@ class Screenshot(QWidget):
             return
         file_name = file_dialog.selectedFiles()[0]
         if not self.original_pixmap.save(file_name):
-            logging.error("The image could not be saved to \"{}\".".format(
+            logger.error("The image could not be saved to \"{}\".".format(
                 QDir.toNativeSeparators(file_name)))
             QMessageBox.warning(self, "Save Error", "The image could not be saved to \"{}\".".format(
                 QDir.toNativeSeparators(file_name)))
@@ -196,22 +194,20 @@ class Screenshot(QWidget):
     @Slot()
     def run_recognition(self):
         folder_path = 'temp_img'
-        logging.debug("running recognition")
+        logger.debug("running recognition")
         if not os.path.exists(folder_path):
             os.mkdir(folder_path)
-            logging.debug("Directory " + folder_path + " created")
+            logger.debug("Directory " + folder_path + " created")
         else:
-            logging.debug("Directory " + folder_path + " already yet")
+            logger.debug("Directory " + folder_path + " already yet")
         if self.original_pixmap.save(folder_path + '/img001.png'):
-            logging.debug("Picture img001 created")
+            logger.debug("Picture img001 created")
 
-            logging.debug("List_item_checked: " +
-                          str(self.lang_combo_box.list_item_checked()))
+            logger.debug("List_item_checked: " +
+                         str(self.lang_combo_box.list_item_checked()))
 
             res = self.recognition(
                 folder_path + '/img001.png', self.lang_combo_box.list_item_checked())
-            # calling reco
-            # print(res)
 
             self.text_edit.setText(res)
             self.save_text_button.setEnabled(True)
@@ -224,10 +220,9 @@ class Screenshot(QWidget):
 
         try:
             rmtree(folder_path)
-            logging.debug("Directory " + folder_path+" deleted")
-            # logging.debug("Picture img001 created")
+            logger.debug("Directory " + folder_path+" deleted")
         except OSError as e:
-            logging.error("Error: %s : %s" % (folder_path, e.strerror))
+            logger.error("Error: %s : %s" % (folder_path, e.strerror))
 
     def recognition(self, path, langs=['eng']):
         try:
@@ -241,7 +236,11 @@ class Screenshot(QWidget):
             im = ImageOps.invert(im.convert('RGB'))
         if self.grayscale_check_box.isChecked():
             im = im.convert('LA')
-            # im.save('test.png', 'PNG')
+        if logger.isEnabledFor(logging.DEBUG):
+            if not os.path.exists('debug'):
+                os.mkdir('debug')
+            im.save('debug/test_' + str(datetime.now()
+                                        ).replace(' ', '_') + '.png', 'PNG')
         res = pytesseract.image_to_string(im, lang=srt_lang)
         return res
 
@@ -254,9 +253,6 @@ class Screenshot(QWidget):
             screen = window.screen()
         if not screen:
             return
-
-        # if self.delay_spin_box.value() != 0:
-        #     QApplication.beep()
 
         if type(windo) in (list, tuple):
             self.original_pixmap = screen.grabWindow(
@@ -332,7 +328,9 @@ class FullScreenDraw(QDialog):
         self.cursor_pos = self.fix_coordinate(
             self.mouse_start_pos, self.mouse_end_pos)
 
-        # print(self.cursor_pos, '----', self.mouse_start_pos, self.mouse_end_pos)
+        logger.debug("Rectangle coordinate: " +
+                     str(self.mouse_start_pos) + " ---- " + str(self.mouse_end_pos))
+
         self.parent().shoot_screen(self.cursor_pos)
         self.parent().show()
 
@@ -341,7 +339,6 @@ class FullScreenDraw(QDialog):
     def paintEvent(self, event):
         painter = QPainter()
         painter.begin(self)
-        # painter.setOpacity(0)
         pen = QPen(Qt.red, 1, Qt.SolidLine)
         painter.setPen(pen)
         if self.mouse_pressed:

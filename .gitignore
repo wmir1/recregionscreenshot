@@ -1,3 +1,5 @@
 qtenv/
 .vscode/
+debug/
 main2.py
+.gitignore
